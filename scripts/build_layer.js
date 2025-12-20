@@ -13,7 +13,6 @@ const OUT_FILE = `docs/${layer}.html`;
 const TEMPLATE_FILE = "docs/_template.html";
 const PRE_REGEX = /<pre id="content">[\s\S]*?<\/pre>/;
 
-// ★ レイヤ別の最低文字数（事故防止＋現実対応）
 const MIN_CHARS_BY_LAYER = {
   L1: 500,
   L2: 500,
@@ -23,6 +22,7 @@ const MIN_CHARS_BY_LAYER = {
 };
 
 const MIN_CHARS = MIN_CHARS_BY_LAYER[layer] ?? 300;
+const IS_OPTIONAL_LAYER = layer === "L5"; // ★ L5だけ特別扱い
 
 (async () => {
   if (!fs.existsSync(TEMPLATE_FILE)) {
@@ -41,9 +41,14 @@ const MIN_CHARS = MIN_CHARS_BY_LAYER[layer] ?? 300;
   await browser.close();
 
   if (cleaned.length < MIN_CHARS) {
-    throw new Error(
-      `Content too short (${cleaned.length}). Min required=${MIN_CHARS}. Abort to prevent overwrite.`
-    );
+    const msg = `Content too short (${cleaned.length}). Min required=${MIN_CHARS}.`;
+
+    if (IS_OPTIONAL_LAYER) {
+      console.warn(`[SKIP] ${layer}: ${msg} Keep previous version.`);
+      process.exit(0); // ★ ここが重要：止めない
+    } else {
+      throw new Error(msg);
+    }
   }
 
   const template = fs.readFileSync(TEMPLATE_FILE, "utf-8");
