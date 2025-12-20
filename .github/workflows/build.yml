@@ -24,26 +24,14 @@ jobs:
       - name: Build L1
         run: node scripts/build_l1.js
 
-      - name: Build L2
-        run: node scripts/build_l2.js
-
-      - name: Build L3
-        run: node scripts/build_l3.js
-
-      - name: Build L4
-        run: node scripts/build_l4.js
-
-      - name: Build L5
-        run: node scripts/build_l5.js
-
       - name: Commit & Push
         run: |
           git config user.name "snapshot-bot"
           git config user.email "snapshot@bot"
-          git add docs/L1.html docs/L2.html docs/L3.html docs/L4.html docs/L5.html
+          git add docs/L1.html
           if git diff --cached --quiet; then
             echo "No changes"
             exit 0
           fi
-          git commit -m "Update snapshots"
+          git commit -m "Update L1 snapshot"
           git push
