@@ -2,10 +2,10 @@ const fs = require("fs");
 const { chromium } = require("playwright");
 
 const URL =
-  "PUT_L2_NOTION_PUBLIC_URL_HERE";
+  "PUT_L3_NOTION_PUBLIC_URL_HERE";
 
-const OUT_FILE = "docs/L2.html";
-const TEMPLATE_FILE = "docs/L2.html";
+const OUT_FILE = "docs/L3.html";
+const TEMPLATE_FILE = "docs/L3.html";
 const PRE_REGEX = /<pre id="content">[\s\S]*?<\/pre>/;
 
 (async () => {
@@ -40,7 +40,7 @@ const PRE_REGEX = /<pre id="content">[\s\S]*?<\/pre>/;
   );
 
   fs.writeFileSync(OUT_FILE, updated, "utf-8");
-  console.log(`Updated L2.html (chars=${cleaned.length})`);
+  console.log(`Updated L3.html (chars=${cleaned.length})`);
 })().catch((e) => {
   console.error(e);
   process.exit(1);
