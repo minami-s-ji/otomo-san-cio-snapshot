@@ -9,26 +9,29 @@ if (!layer || !url) {
   process.exit(1);
 }
 
+// ★ ここが今回のエラー原因に直結：テンプレは必ず docs/_template.html
 const OUT_FILE = `docs/${layer}.html`;
 const TEMPLATE_FILE = "docs/_template.html";
 const PRE_REGEX = /<pre id="content">[\s\S]*?<\/pre>/;
 
 (async () => {
+  // 念のため：テンプレがあるか最初にチェックして、分かりやすく落とす
+  if (!fs.existsSync(TEMPLATE_FILE)) {
+    throw new Error(`Template not found: ${TEMPLATE_FILE}`);
+  }
+
   const browser = await chromium.launch();
   const page = await browser.newPage();
 
-  // Notionは遅い時があるので、networkidleは避けて domcontentloaded を使う
   await page.goto(url, {
     waitUntil: "domcontentloaded",
     timeout: 60000,
   });
 
-  // Notion対策：段階待ちして、内容が十分出てきたら確定
   const cleaned = await waitAndExtract(page);
 
   await browser.close();
 
-  // 事故防止：空に近い取得結果で上書きしない
   const MIN_CHARS = 500;
   if (cleaned.length < MIN_CHARS) {
     throw new Error(
@@ -54,7 +57,6 @@ const PRE_REGEX = /<pre id="content">[\s\S]*?<\/pre>/;
 });
 
 async function waitAndExtract(page) {
-  // 3秒→6秒→10秒（最大約19秒）で段階取得
   const waits = [3000, 6000, 10000];
   let last = "";
 
@@ -70,7 +72,7 @@ async function waitAndExtract(page) {
     last = normalizeText(text);
     if (last.length >= 500) return last;
   }
-  return last; // 最終結果（下流でMIN_CHARSチェック）
+  return last;
 }
 
 function normalizeText(input) {
