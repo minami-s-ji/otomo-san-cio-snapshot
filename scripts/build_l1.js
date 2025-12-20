@@ -10,26 +10,21 @@ const TEMPLATE_FILE = "docs/L1.html"; // 同じファイルをテンプレとし
 const PRE_REGEX = /<pre id="content">[\s\S]*?<\/pre>/;
 
 async function run() {
-  // 1) Notion HTML取得
   const res = await fetch(L1_URL, {
     headers: {
-      // たまに弾かれるのを避ける保険（効かない時もあるが害は少ない）
       "User-Agent":
         "Mozilla/5.0 (GitHubActions) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari",
       Accept: "text/html,application/xhtml+xml",
     },
   });
+
   if (!res.ok) throw new Error(`Failed to fetch L1: ${res.status}`);
 
   const notionHtml = await res.text();
 
-  // 2) HTMLをパース
   const $ = cheerio.load(notionHtml);
-
-  // 3) 余計なものを除去（重い/ノイズになりがち）
   $("script, style, noscript, svg, iframe, canvas").remove();
 
-  // 4) 本文候補を優先順で探す（NotionのDOMは変わるのでフォールバック）
   const candidates = [
     "main",
     "article",
@@ -49,10 +44,16 @@ async function run() {
   }
   if (!text) text = $("body").text() || "";
 
-  // 5) テキスト整形（読みやすさ優先で“軽く”）
   const cleaned = normalizeText(text);
 
-  // 6) docs/L1.html の <pre id="content">...</pre> を差し替え
+  // ★事故防止：短すぎる場合は失敗扱いにして「空で上書き」を止める
+  const MIN_CHARS = 500;
+  if (cleaned.length < MIN_CHARS) {
+    throw new Error(
+      `Content too short (${cleaned.length}). Abort to prevent empty overwrite.`
+    );
+  }
+
   const template = fs.readFileSync(TEMPLATE_FILE, "utf-8");
   if (!PRE_REGEX.test(template)) {
     throw new Error(
@@ -72,13 +73,9 @@ async function run() {
 function normalizeText(input) {
   return (input || "")
     .replace(/\r/g, "")
-    // 行末の余計な空白
     .replace(/[ \t]+\n/g, "\n")
-    // 空行を最大2行に
     .replace(/\n{3,}/g, "\n\n")
-    // 連続スペースを1つに
     .replace(/[ \t]{2,}/g, " ")
-    // 前後の空白を落とす
     .trim();
 }
 
