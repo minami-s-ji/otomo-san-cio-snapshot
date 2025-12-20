@@ -6,12 +6,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      # node-fetch を使うので必ず入れる（package.json が無くてもOK）
+      - run: npm init -y
+      - run: npm install node-fetch@3
 
       - run: node scripts/build_l1.js
 
