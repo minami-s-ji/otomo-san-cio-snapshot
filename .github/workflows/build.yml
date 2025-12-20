@@ -6,7 +6,7 @@ permissions:
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/30 * * * *"  # 30分ごと
+    - cron: "*/30 * * * *" # 30分ごと
 
 concurrency:
   group: snapshot-build
