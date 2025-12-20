@@ -17,10 +17,8 @@ jobs:
         with:
           node-version: 20
 
-      # node-fetch を使うので必ず入れる（package.json が無くてもOK）
-- run: npm init -y
-- run: npm install cheerio
-- run: node scripts/build_l1.js
+      - name: Build L1
+        run: node scripts/build_l1.js
 
       - name: Commit & Push
         run: |
