@@ -9,7 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -28,5 +27,9 @@ jobs:
           git config user.name "snapshot-bot"
           git config user.email "snapshot@bot"
           git add docs/L1.html
-          git commit -m "Update L1 snapshot" || echo "No changes"
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Update L1 snapshot"
           git push
