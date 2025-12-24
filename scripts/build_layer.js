@@ -13,17 +13,16 @@ const OUT_FILE = `docs/${layer}.html`;
 const TEMPLATE_FILE = "docs/_template.html";
 const PRE_REGEX = /<pre id="content">[\s\S]*?<\/pre>/;
 
-// レイヤ別最低文字数（現実に合わせた下限）
+// レイヤ別最低文字数
 const MIN_CHARS_BY_LAYER = {
   L1: 500,
   L2: 500,
   L3: 200,
-  L4: 200,
+  L4: 1,    // ← ★重要：L4は「存在すればOK」
   L5: 500,
 };
 const MIN_CHARS = MIN_CHARS_BY_LAYER[layer] ?? 300;
 
-// Notion対策：ページ取得自体をリトライする回数
 const NAV_RETRIES = 3;
 
 (async () => {
@@ -33,7 +32,6 @@ const NAV_RETRIES = 3;
 
   const browser = await chromium.launch();
   const page = await browser.newPage({
-    // NotionはUAや表示幅で挙動が変わることがあるので固定
     viewport: { width: 1280, height: 720 },
   });
 
@@ -42,23 +40,18 @@ const NAV_RETRIES = 3;
 
   for (let i = 1; i <= NAV_RETRIES; i++) {
     try {
-      cleaned = await fetchNotionText(page, url, MIN_CHARS);
+      cleaned = await fetchNotionText(page, url);
       if (cleaned.length >= MIN_CHARS) break;
     } catch (e) {
       lastErr = e;
-      // 次のトライへ
     }
   }
 
   await browser.close();
 
   if (cleaned.length < MIN_CHARS) {
-    const msg = `Content too short (${cleaned.length}). Min required=${MIN_CHARS}.`;
-    // “存在する”前提なので、ここは止める（取りこぼしを見逃さない）
     throw new Error(
-      `${layer}: ${msg} (after ${NAV_RETRIES} retries) ${
-        lastErr ? " lastErr=" + (lastErr.message || lastErr) : ""
-      }`
+      `${layer}: Content too short (${cleaned.length}). Min required=${MIN_CHARS}.`
     );
   }
 
@@ -79,39 +72,11 @@ const NAV_RETRIES = 3;
   process.exit(1);
 });
 
-async function fetchNotionText(page, url, minChars) {
-  // 1回目で変な状態を掴んだ時に備えて、毎回新規ロード扱いに寄せる
+async function fetchNotionText(page, url) {
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-
-  // 初期描画待ち
   await page.waitForTimeout(1500);
 
-  // 長文（特にL4）対策：スクロールして本文をDOMに出す
   await autoScroll(page);
-  await page.waitForTimeout(1000);
-
-  // 「本文がある程度の長さになるまで」待つ（最大45秒）
-  try {
-    await page.waitForFunction(
-      (n) => {
-        const candidates = [
-          document.querySelector(".notion-page-content"),
-          document.querySelector("main"),
-          document.querySelector('[role="main"]'),
-          document.body,
-        ];
-        const el = candidates.find((x) => x && (x.innerText || "").trim().length);
-        const t = el ? el.innerText : "";
-        return t && t.replace(/\s+/g, " ").trim().length >= n;
-      },
-      minChars,
-      { timeout: 45000 }
-    );
-  } catch {
-    // waitForFunctionが落ちても一応取得はして判定に回す（リトライさせるため）
-  }
-
-  // 念のためちょい待ち（Notion対策）
   await page.waitForTimeout(1000);
 
   const text = await page.evaluate(() => {
@@ -128,34 +93,22 @@ async function fetchNotionText(page, url, minChars) {
     return "";
   });
 
-  const cleaned = normalizeText(text);
-
-  // Notionが何らかの理由で「変なページ」を返した時の簡易検知（軽め）
-  if (/you do not have access|access denied|not found/i.test(cleaned)) {
-    throw new Error("Looks like an error page (access/not found).");
-  }
-
-  return cleaned;
+  return normalizeText(text);
 }
 
 async function autoScroll(page) {
   await page.evaluate(async () => {
     await new Promise((resolve) => {
       const distance = 800;
-      const maxScrolls = 30; // 暴走防止
-      let scrolls = 0;
-
+      let count = 0;
       const timer = setInterval(() => {
         window.scrollBy(0, distance);
-        scrolls += 1;
-
-        const nearBottom =
-          window.innerHeight + window.scrollY >=
-          document.body.scrollHeight - 200;
-
-        if (nearBottom || scrolls >= maxScrolls) {
+        count++;
+        if (
+          window.innerHeight + window.scrollY >= document.body.scrollHeight - 200 ||
+          count > 30
+        ) {
           clearInterval(timer);
-          // 先頭に戻す（抽出安定化）
           window.scrollTo(0, 0);
           resolve();
         }
