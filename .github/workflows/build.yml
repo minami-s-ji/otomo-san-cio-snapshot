@@ -5,8 +5,9 @@ permissions:
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "*/30 * * * *" # 30分ごと
+  # 安定確認後に戻す
+  # schedule:
+  #   - cron: "*/30 * * * *" # 30分ごと
 
 concurrency:
   group: snapshot-build
@@ -15,7 +16,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -25,22 +25,22 @@ jobs:
 
       - name: Install deps
         run: |
-          npm i playwright
-          npx playwright install --with-deps chromium
+          npm ci || npm i
 
-      - name: Build L1-L5
+      - name: Build L1-L5 via Notion API
         env:
-          L1_URL: "https://relieved-animantarx-a06.notion.site/L1-CIO-2cd840b3d8eb80cbb93deffcb4d825e1"
-          L2_URL: "https://relieved-animantarx-a06.notion.site/L2-2cd840b3d8eb8094bf09d333dbf02842"
-          L3_URL: "https://relieved-animantarx-a06.notion.site/L3-2cd840b3d8eb8097a2c7fd481195b4e1"
-          L4_URL: "https://relieved-animantarx-a06.notion.site/L4-2cd840b3d8eb808bb369fc77e1469f75"
-          L5_URL: "https://relieved-animantarx-a06.notion.site/L5-2cd840b3d8eb80b39080f0d61d2f5c54"
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          L1_PAGE_ID: "2cd840b3d8eb80cbb93deffcb4d825e1"
+          L2_PAGE_ID: "2cd840b3d8eb8094bf09d333dbf02842"
+          L3_PAGE_ID: "2cd840b3d8eb8097a2c7fd481195b4e1"
+          L4_PAGE_ID: "2cd840b3d8eb808bb369fc77e1469f75"
+          L5_PAGE_ID: "2cd840b3d8eb80b39080f0d61d2f5c54"
         run: |
-          node scripts/build_layer.js L1 "$L1_URL"
-          node scripts/build_layer.js L2 "$L2_URL"
-          node scripts/build_layer.js L3 "$L3_URL"
-          node scripts/build_layer.js L4 "$L4_URL"
-          node scripts/build_layer.js L5 "$L5_URL"
+          node scripts/build_layer_api.js L1 "$L1_PAGE_ID"
+          node scripts/build_layer_api.js L2 "$L2_PAGE_ID"
+          node scripts/build_layer_api.js L3 "$L3_PAGE_ID"
+          node scripts/build_layer_api.js L4 "$L4_PAGE_ID"
+          node scripts/build_layer_api.js L5 "$L5_PAGE_ID"
 
       - name: Commit & Push (only if changed)
         run: |
