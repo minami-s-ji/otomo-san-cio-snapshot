@@ -1,0 +1,8 @@
+{
+  "name": "onomo-san-cio-snapshot",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "@notionhq/client": "^2.2.15"
+  }
+}
